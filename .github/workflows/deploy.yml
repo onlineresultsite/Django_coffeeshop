@@ -491,7 +491,7 @@ jobs:
             # Collect static files
             python manage.py collectstatic --noinput
             
-            # Restart services (example: Gunicorn and Nginx)bng
+            # Restart services (example: Gunicorn and Nginx)
             sudo systemctl restart gunicorn
             sudo systemctl restart nginx
             
