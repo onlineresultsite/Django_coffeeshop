@@ -248,7 +248,7 @@ jobs:
             # Activate Python virtual environment
             source venv/bin/activate
             
-            # Install or upgrade dependencies
+            # Install or upgrade dependencies df
             pip install --upgrade pip
             pip install -r requirements.txt
             
