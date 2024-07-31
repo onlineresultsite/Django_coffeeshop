@@ -570,7 +570,6 @@ jobs:
             cd /home/ubuntu/Searchable-Product-Filter
             git pull
             echo "git pull success for Searchable-product repo"
-            npm stop
             npm start
 
             cd /home/ubuntu/nodejs-backend-architecture-typescript
