@@ -407,13 +407,14 @@ on:
     types:
       - deploy-django
 
+# this code for cancel inprogress workflow
 jobs:
   deploy:
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
-
+# end
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
