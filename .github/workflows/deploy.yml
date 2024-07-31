@@ -397,6 +397,101 @@
 
 
 
+                                          # without trigger final code
+
+
+# name: Deploy Django to EC2
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   repository_dispatch:
+#     types:
+#       - deploy-django
+
+# # this code for cancel inprogress workflow
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     concurrency:
+#       group: deploy-${{ github.ref }}
+#       cancel-in-progress: true
+# # end
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: '3.8'
+
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
+
+#       - name: Install AWS CLI
+#         run: |
+#           sudo apt-get update
+#           sudo apt-get install -y awscli
+
+#       - name: Add SSH key
+#         uses: webfactory/ssh-agent@v0.5.3
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
+
+#       - name: Sync files to EC2
+#         env:
+#           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+#           EC2_USER: ${{ secrets.EC2_USER }}
+#         run: |
+#           scp -o StrictHostKeyChecking=no -r * $EC2_USER@$EC2_PUBLIC_IP:/home/ubuntu/webemp
+
+#       - name: SSH to EC2 and Deploy
+#         env:
+#           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+#           EC2_USER: ${{ secrets.EC2_USER }}
+#         run: |
+#           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_PUBLIC_IP << 'EOF'
+#             cd /home/ubuntu/webemp
+            
+#             # Ensure Python venv and install dependenciess
+#             source venv/bin/activate
+#             pip install --upgrade pip
+#             pip install -r requirements.txt
+            
+#             # Run Django management commands
+#             python manage.py collectstatic --noinput
+#             python manage.py makemigrations
+#             python manage.py migrate
+            
+#             # Restart Gunicorn and Nginx (if applicable)
+#             sudo systemctl restart gunicorn
+#             sudo systemctl restart nginx
+            
+#             deactivate  # Deactivate virtual environment
+            
+#             # Additional commands as needed after deployment
+
+#             cd /home/ubuntu/Searchable-Product-Filter
+#             git pull
+#             echo "git pull success for Searchable-product repo"
+#             # source /venv/bin/activate
+#             #npm stop
+#             #npm start
+
+#             cd /home/ubuntu/nodejs-backend-architecture-typescript
+#             git pull
+#             echo "git pull success for nodejs-backend repo"
+#             # source /venv/bin/activate
+#             #npm stop
+#             #npm start
+#           EOF
+
+
+
 name: Deploy Django to EC2
 
 on:
@@ -407,14 +502,14 @@ on:
     types:
       - deploy-django
 
-# this code for cancel inprogress workflow
+# Concurrency settings to cancel older runs
 jobs:
   deploy:
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
-# end
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -454,7 +549,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_PUBLIC_IP << 'EOF'
             cd /home/ubuntu/webemp
             
-            # Ensure Python venv and install dependenciess
+            # Ensure Python venv and install dependencies
             source venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
@@ -487,3 +582,11 @@ jobs:
             #npm start
           EOF
 
+      - name: Trigger Selenium workflow
+        if: success()
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: onlineresultsite/my-selenium-tests
+          event-type: selenium-tests
+          client-payload: '{"ref": "main"}'
