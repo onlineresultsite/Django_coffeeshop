@@ -284,6 +284,117 @@
 #           EOF
 
 
+# name: Deploy Django to EC2
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   repository_dispatch:
+#     types: [deploy-django]
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: '3.8'
+
+#       - name: Check if another deployment is running
+#         id: check_another_deployment
+#         run: |
+#           response=$(curl -s -X GET \
+#             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+#             "https://api.github.com/repos/${{ github.repository }}/actions/runs?event=deploy-django&status=in_progress")
+#           echo "Response from API:"
+#           echo "$response"
+#           echo "$response" > response.json  # Save response to a file
+
+#       - name: Cancel existing deployment if running
+#         if: steps.check_another_deployment.outputs.response != '[]'
+#         run: |
+#           echo "Checking if there is an existing deployment in progress..."
+#           run_id=$(jq -r '.workflow_runs[0].id' response.json)
+#           echo "Found an active deployment with run ID: $run_id"
+          
+#           echo "Cancelling the existing deployment..."
+#           curl -X POST \
+#             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+#             -H "Accept: application/vnd.github.v3+json" \
+#             "https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id/cancel"
+
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
+
+#       - name: Install AWS CLI
+#         run: |
+#           sudo apt-get update
+#           sudo apt-get install -y awscli
+
+#       - name: Add SSH key
+#         uses: webfactory/ssh-agent@v0.5.3
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
+
+#       - name: Sync files to EC2
+#         env:
+#           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+#           EC2_USER: ${{ secrets.EC2_USER }}
+#         run: |
+#           scp -o StrictHostKeyChecking=no -r * $EC2_USER@$EC2_PUBLIC_IP:/home/ubuntu/webemp/
+
+#       - name: SSH to EC2 and Deploy
+#         env:
+#           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+#           EC2_USER: ${{ secrets.EC2_USER }}
+#         run: |
+#           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_PUBLIC_IP << 'EOF'
+#             cd /home/ubuntu/webemp
+            
+#             # Activate Python virtual environment
+#             source venv/bin/activate
+            
+#             # Install or upgrade dependencies
+#             pip install --upgrade pip
+#             pip install -r requirements.txt
+            
+#             # Perform Django database migrations
+#             python manage.py migrate
+            
+#             # Collect static files
+#             python manage.py collectstatic --noinput
+            
+#             # Restart services (example: Gunicorn and Nginx)
+#             sudo systemctl restart gunicorn
+#             sudo systemctl restart nginx
+            
+#             # Deactivate Python virtual environment
+#             deactivate
+            
+#             # Additional commands as needed after deployment
+#             cd /home/ubuntu/Searchable-Product-Filter
+#             git pull
+#             echo "git pull success for Searchable-product repo"
+#             # source /venv/bin/activate
+#             # npm stop
+#             # npm start
+
+#             cd /home/ubuntu/nodejs-backend-architecture-typescript
+#             git pull
+#             echo "git pull success for nodejs-backend repo"
+#             # source /venv/bin/activate
+#             # npm stop
+#             # npm start
+#           EOF
+
 name: Deploy Django to EC2
 
 on:
@@ -329,22 +440,29 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id/cancel"
 
+          # Wait briefly to ensure cancellation takes effect
+          sleep 10  # Adjust as needed
+
       - name: Install dependencies
+        if: steps.check_another_deployment.outputs.response == '[]'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Install AWS CLI
+        if: steps.check_another_deployment.outputs.response == '[]'
         run: |
           sudo apt-get update
           sudo apt-get install -y awscli
 
       - name: Add SSH key
+        if: steps.check_another_deployment.outputs.response == '[]'
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
 
       - name: Sync files to EC2
+        if: steps.check_another_deployment.outputs.response == '[]'
         env:
           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -352,6 +470,7 @@ jobs:
           scp -o StrictHostKeyChecking=no -r * $EC2_USER@$EC2_PUBLIC_IP:/home/ubuntu/webemp/
 
       - name: SSH to EC2 and Deploy
+        if: steps.check_another_deployment.outputs.response == '[]'
         env:
           EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
           EC2_USER: ${{ secrets.EC2_USER }}
