@@ -216,13 +216,13 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/actions/runs?event=deploy-django&status=in_progress")
           echo "Response from API:"
           echo "$response"
-          echo "::set-output name=data::$response"
+          echo "$response" > response.json  # Save response to a file
 
       - name: Cancel existing deployment if running
         if: steps.check_another_deployment.outputs.data != '[]'
         run: |
           echo "Canceling the existing Django_coffeeshop workflow..."
-          run_id=$(echo "${{ steps.check_another_deployment.outputs.data }}" | jq -r '.workflow_runs[0].id')
+          run_id=$(jq -r '.workflow_runs[0].id' response.json)
           curl -X POST \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -275,3 +275,4 @@ jobs:
             #npm stop
             #npm start
           EOF
+
